@@ -1,0 +1,17 @@
+Source: kaylor-input
+Section: utils
+Priority: optional
+Maintainer: kaylor <kaylor@localhost>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.0
+
+Package: kaylor-input
+Architecture: all
+Depends: python3-flask, ${misc:Depends}
+Recommends: xdotool, xclip, wl-clipboard, ydotool
+Description: LAN text input relay tool
+ Open a web page on your phone, type text, press Send, and the
+ text is pasted at the cursor on your Linux desktop.
+ .
+ Auto-detects X11 or Wayland and uses the appropriate paste method.
+ Access from any device on the same LAN via http://<ip>:5000.

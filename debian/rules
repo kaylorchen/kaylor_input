@@ -1,0 +1,10 @@
+#!/usr/bin/make -f
+%:
+	dh $@
+
+override_dh_install:
+	dh_install
+	# Install user service with correct name
+	mkdir -p debian/kaylor-input/usr/lib/systemd/user
+	cp debian/kaylor-input.user.service \
+	   debian/kaylor-input/usr/lib/systemd/user/kaylor-input.service

@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+    loginctl enable-linger "$SUDO_USER" 2>/dev/null || true
+    sudo -u "$SUDO_USER" systemctl --user daemon-reload 2>/dev/null || true
+fi
+echo ""
+echo "=== kaylor-input installed ==="
+echo "Enable:  systemctl --user enable --now kaylor-input"
+echo "Access:  http://<ip>:5000"
+echo ""

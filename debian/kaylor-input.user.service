@@ -1,0 +1,13 @@
+[Unit]
+Description=Kaylor Input Text Relay
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/lib/kaylor-input/app.py
+WorkingDirectory=/usr/lib/kaylor-input
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

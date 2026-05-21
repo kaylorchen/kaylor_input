@@ -1,0 +1,9 @@
+.debhelper/
+debhelper-build-stamp
+files
+kaylor-input.debhelper.log
+kaylor-input.postinst.debhelper
+kaylor-input.postrm.debhelper
+kaylor-input.substvars
+kaylor-input/
+*.deb
