@@ -31,10 +31,18 @@ def _type_x11(text):
         has_saved = False
         saved_text = ""
 
-    subprocess.run(
-        ["xclip", "-selection", "primary"],
-        input=text, text=True, check=True, timeout=5,
-    )
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        f.write(text)
+        tmp_path = f.name
+    try:
+        with open(tmp_path) as fh:
+            subprocess.run(
+                ["xclip", "-selection", "primary"],
+                stdin=fh, check=True, timeout=5,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+    finally:
+        os.unlink(tmp_path)
 
     time.sleep(0.05)
     subprocess.run(
@@ -45,10 +53,18 @@ def _type_x11(text):
 
     time.sleep(0.1)
     if has_saved:
-        subprocess.run(
-            ["xclip", "-selection", "primary"],
-            input=saved_text, text=True, timeout=5,
-        )
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write(saved_text)
+            restore_path = f.name
+        try:
+            with open(restore_path) as fh:
+                subprocess.run(
+                    ["xclip", "-selection", "primary"],
+                    stdin=fh, timeout=5,
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                )
+        finally:
+            os.unlink(restore_path)
 
 
 def _type_wayland(text):
