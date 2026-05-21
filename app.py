@@ -12,12 +12,15 @@ TERMINAL_KEYWORDS = ("terminal", "term", "xterm", "konsole", "alacritty",
                      "kitty", "tilix", "st-", "rxvt", "foot", "Terminal", "Term")
 
 
+def _is_macos():
+    return os.uname().sysname == "Darwin"
+
+
 def _is_wayland():
     return bool(os.environ.get("WAYLAND_DISPLAY")) or os.environ.get("XDG_SESSION_TYPE") == "wayland"
 
 
 def _is_terminal_x11():
-    """Check if the focused X11 window is a terminal."""
     try:
         wid = subprocess.run(
             ["xdotool", "getactivewindow"],
@@ -35,10 +38,35 @@ def _is_terminal_x11():
 
 
 def type_text(text):
-    if _is_wayland():
+    if _is_macos():
+        _type_darwin(text)
+    elif _is_wayland():
         _type_wayland(text)
     else:
         _type_x11(text)
+
+
+def _type_darwin(text):
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        f.write(text)
+        tmp_path = f.name
+    try:
+        with open(tmp_path) as fh:
+            subprocess.run(
+                ["pbcopy"], stdin=fh,
+                check=True, timeout=5,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+    finally:
+        os.unlink(tmp_path)
+
+    time.sleep(0.05)
+    subprocess.run(
+        ["osascript", "-e",
+         'tell application "System Events" to keystroke "v" using command down'],
+        check=True, timeout=5,
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
 
 
 def _type_x11(text):
@@ -120,7 +148,9 @@ def send_text():
     except subprocess.CalledProcessError as e:
         return jsonify({"error": f"Input tool error: {e}"}), 500
     except FileNotFoundError as e:
-        if _is_wayland():
+        if _is_macos():
+            hint = "macOS pbcopy/osascript unavailable (should be built-in)"
+        elif _is_wayland():
             hint = "Wayland: apt install wl-clipboard ydotool && usermod -a -G input $USER (re-login) && ydotoold &"
         else:
             hint = "X11: apt install xclip xdotool"
@@ -128,7 +158,7 @@ def send_text():
 
 
 if __name__ == "__main__":
-    if _is_wayland():
+    if _is_wayland() and not _is_macos():
         try:
             subprocess.run(["pgrep", "ydotoold"], check=True, capture_output=True)
         except subprocess.CalledProcessError:
