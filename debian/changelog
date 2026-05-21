@@ -1,5 +1,7 @@
 kaylor-input (1.0.0) unstable; urgency=medium
 
-  * Initial release. X11 primary+middle-click, Wayland clipboard+right-click.
+  * Switch paste from mouse click to Ctrl+V (keyboard focus position).
+  * Fix subprocess pipe deadlock by using temp files for stdin.
+  * Systemd user service, auto-detects X11/Wayland.
 
  -- kaylor <kaylor@localhost>  Thu, 21 May 2026 17:00:00 +0800

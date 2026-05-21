@@ -20,21 +20,16 @@ def type_text(text):
 
 
 def _type_x11(text):
-    try:
-        saved = subprocess.run(
-            ["xclip", "-selection", "primary", "-o"],
-            capture_output=True, text=True, timeout=2,
-        )
-        has_saved = saved.returncode == 0
-        saved_text = saved.stdout if has_saved else ""
-    except Exception:
-        has_saved = False
-        saved_text = ""
-
     with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
         f.write(text)
         tmp_path = f.name
     try:
+        with open(tmp_path) as fh:
+            subprocess.run(
+                ["xclip", "-selection", "clipboard"],
+                stdin=fh, check=True, timeout=5,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
         with open(tmp_path) as fh:
             subprocess.run(
                 ["xclip", "-selection", "primary"],
@@ -46,25 +41,10 @@ def _type_x11(text):
 
     time.sleep(0.05)
     subprocess.run(
-        ["xdotool", "click", "2"],
+        ["xdotool", "key", "ctrl+v"],
         check=True, timeout=5,
         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
-
-    time.sleep(0.1)
-    if has_saved:
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-            f.write(saved_text)
-            restore_path = f.name
-        try:
-            with open(restore_path) as fh:
-                subprocess.run(
-                    ["xclip", "-selection", "primary"],
-                    stdin=fh, timeout=5,
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                )
-        finally:
-            os.unlink(restore_path)
 
 
 def _type_wayland(text):
@@ -88,7 +68,7 @@ def _type_wayland(text):
         os.unlink(tmp_path)
     time.sleep(0.15)
     subprocess.run(
-        ["ydotool", "click", "3"],
+        ["ydotool", "key", "ctrl+v"],
         check=True, timeout=5,
         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
@@ -115,8 +95,6 @@ def send_text():
     except subprocess.TimeoutExpired:
         return jsonify({"error": "Input timed out"}), 500
     except subprocess.CalledProcessError as e:
-        if e.returncode == -13:  # SIGPIPE: click sent, pipe closed on exit
-            return jsonify({"ok": True, "text": text})
         return jsonify({"error": f"Input tool error: {e}"}), 500
     except FileNotFoundError as e:
         if _is_wayland():

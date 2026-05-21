@@ -62,5 +62,7 @@ sudo usermod -a -G input $USER
 
 | | X11 | Wayland |
 |---|---|---|
-| 设置文本 | `xclip -selection primary` | `wl-copy` + `wl-copy --primary` |
-| 粘贴 | `xdotool click 2`（中键粘贴） | `ydotool click 3` |
+| 设置文本 | `xclip clipboard + primary` | `wl-copy` + `wl-copy --primary` |
+| 粘贴 | `xdotool key ctrl+v` | `ydotool key ctrl+v` |
+
+粘贴在键盘焦点（文本光标）位置，而非鼠标指针位置。
