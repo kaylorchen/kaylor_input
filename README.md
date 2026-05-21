@@ -6,8 +6,7 @@
 
 ```bash
 cd /home/kaylor/work/kaylor_input
-conda activate kaylor_input
-python app.py
+python3 app.py
 ```
 
 - 本机访问：`http://localhost:5000`
@@ -33,55 +32,30 @@ sudo usermod -a -G input $USER
 
 > 服务自动通过 `WAYLAND_DISPLAY` / `XDG_SESSION_TYPE` 检测环境，无需手动切换。
 
-### 2. Python 环境
+### 2. Python 依赖
 
-仅依赖 Flask 一个库。
+仅依赖 Flask：
 
 ```bash
-conda create -n kaylor_input python=3.10 -y
-conda activate kaylor_input
-pip install flask
+pip3 install flask
 ```
 
 ## 使用
 
-1. 电脑启动服务 `python app.py`
+1. 电脑启动服务 `python3 app.py`
 2. 手机连接同一 WiFi
 3. 手机浏览器打开 `http://<电脑IP>:5000`
 4. 电脑光标放在需要输入的位置
 5. 手机输入文本，点 Send（或 Enter），文本粘贴到光标处
 
-## 开机自启动（systemd）
-
-创建服务文件：
+## 开机自启动
 
 ```bash
-sudo tee /etc/systemd/system/kaylor-input.service << 'EOF'
-[Unit]
-Description=Kaylor Input Text Relay
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=/home/kaylor/miniconda3/envs/kaylor_input/bin/python /home/kaylor/work/kaylor_input/app.py
-WorkingDirectory=/home/kaylor/work/kaylor_input
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=default.target
-EOF
-```
-
-启动并启用：
-
-```bash
+sudo cp kaylor-input.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now kaylor-input
 systemctl status kaylor-input
 ```
-
-> `ExecStart` 中的 conda 路径按实际情况调整：`conda info --envs` 查看环境所在路径。
 
 ## 工作原理
 
@@ -90,5 +64,3 @@ systemctl status kaylor-input
 | 设置文本 | `xclip -selection primary` | `wl-copy` + `wl-copy --primary` |
 | 粘贴 | `xdotool click 2`（中键粘贴） | `ydotool click 3` |
 | 选区恢复 | 保存并恢复原有 PRIMARY | — |
-
-两种方案都不依赖键盘快捷键，通过鼠标点击触发粘贴，全应用通用。

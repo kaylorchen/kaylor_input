@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/home/kaylor/miniconda3/envs/kaylor_input/bin/python /home/kaylor/work/kaylor_input/app.py
+ExecStart=/usr/bin/python3 /home/kaylor/work/kaylor_input/app.py
 WorkingDirectory=/home/kaylor/work/kaylor_input
 Restart=on-failure
 RestartSec=5

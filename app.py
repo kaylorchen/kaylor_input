@@ -1,5 +1,6 @@
 import os
 import subprocess
+import tempfile
 import time
 from flask import Flask, request, jsonify, send_from_directory
 
@@ -18,7 +19,6 @@ def type_text(text):
 
 
 def _type_x11(text):
-    # Save current PRIMARY selection
     try:
         saved = subprocess.run(
             ["xclip", "-selection", "primary", "-o"],
@@ -30,17 +30,18 @@ def _type_x11(text):
         has_saved = False
         saved_text = ""
 
-    # Set PRIMARY selection to our text
     subprocess.run(
         ["xclip", "-selection", "primary"],
         input=text, text=True, check=True, timeout=5,
     )
 
-    # Middle-click to paste (universal X11 paste)
     time.sleep(0.05)
-    subprocess.run(["xdotool", "click", "2"], check=True, timeout=5)
+    subprocess.run(
+        ["xdotool", "click", "2"],
+        check=True, timeout=5,
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
 
-    # Restore original PRIMARY selection
     time.sleep(0.1)
     if has_saved:
         subprocess.run(
@@ -50,10 +51,30 @@ def _type_x11(text):
 
 
 def _type_wayland(text):
-    subprocess.run(["wl-copy"], input=text, text=True, check=True, timeout=5)
-    subprocess.run(["wl-copy", "--primary"], input=text, text=True, check=True, timeout=5)
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        f.write(text)
+        tmp_path = f.name
+    try:
+        with open(tmp_path) as fh:
+            subprocess.run(
+                ["wl-copy"], stdin=fh,
+                check=True, timeout=5,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+        with open(tmp_path) as fh:
+            subprocess.run(
+                ["wl-copy", "--primary"], stdin=fh,
+                check=True, timeout=5,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+    finally:
+        os.unlink(tmp_path)
     time.sleep(0.15)
-    subprocess.run(["ydotool", "click", "3"], check=True, timeout=5)
+    subprocess.run(
+        ["ydotool", "click", "3"],
+        check=True, timeout=5,
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
 
 
 @app.route("/")
@@ -77,6 +98,8 @@ def send_text():
     except subprocess.TimeoutExpired:
         return jsonify({"error": "Input timed out"}), 500
     except subprocess.CalledProcessError as e:
+        if e.returncode == -13:  # SIGPIPE: click sent, pipe closed on exit
+            return jsonify({"ok": True, "text": text})
         return jsonify({"error": f"Input tool error: {e}"}), 500
     except FileNotFoundError as e:
         if _is_wayland():
@@ -91,5 +114,8 @@ if __name__ == "__main__":
         try:
             subprocess.run(["pgrep", "ydotoold"], check=True, capture_output=True)
         except subprocess.CalledProcessError:
-            subprocess.Popen(["ydotoold"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    app.run(host="0.0.0.0", port=5000, debug=False)
+            subprocess.Popen(
+                ["ydotoold"],
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+    app.run(host="0.0.0.0", port=5000, debug=False, threaded=False)
