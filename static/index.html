@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Text Relay</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  #history {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  #history:empty::after {
+    content: "No messages yet";
+    color: #666;
+    text-align: center;
+    padding: 40px 0;
+    font-style: italic;
+  }
+
+  .history-item {
+    background: #16213e;
+    border-radius: 8px;
+    padding: 10px 14px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    user-select: text;
+    font-size: 15px;
+    line-height: 1.5;
+    border-left: 3px solid #0f3460;
+  }
+
+  .history-item .time {
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 4px;
+  }
+
+  #input-area {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #16213e;
+    border-top: 1px solid #0f3460;
+    align-items: flex-end;
+  }
+
+  #input-text {
+    flex: 1;
+    resize: none;
+    min-height: 44px;
+    max-height: 120px;
+    padding: 10px 14px;
+    font-size: 16px;
+    font-family: inherit;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    border: 1px solid #0f3460;
+    border-radius: 8px;
+    outline: none;
+    line-height: 1.4;
+  }
+
+  #input-text:focus {
+    border-color: #e94560;
+  }
+
+  #send-btn {
+    flex-shrink: 0;
+    min-width: 60px;
+    min-height: 44px;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    background: #e94560;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  #send-btn:active {
+    background: #c23152;
+  }
+
+  #send-btn:disabled {
+    background: #555;
+    cursor: not-allowed;
+  }
+
+  #status {
+    text-align: center;
+    padding: 4px;
+    font-size: 12px;
+    color: #e94560;
+    min-height: 20px;
+  }
+</style>
+</head>
+<body>
+
+<div id="history"></div>
+<div id="status"></div>
+<div id="input-area">
+  <textarea id="input-text" rows="1" placeholder="Type here..." inputmode="text" autocomplete="off"></textarea>
+  <button id="send-btn">Send</button>
+</div>
+
+<script>
+  const historyEl = document.getElementById("history");
+  const inputEl = document.getElementById("input-text");
+  const sendBtn = document.getElementById("send-btn");
+  const statusEl = document.getElementById("status");
+
+  function autoResize() {
+    inputEl.style.height = "auto";
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + "px";
+  }
+
+  inputEl.addEventListener("input", autoResize);
+
+  inputEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendText();
+    }
+  });
+
+  sendBtn.addEventListener("click", sendText);
+
+  function addHistory(text) {
+    const item = document.createElement("div");
+    item.className = "history-item";
+    const now = new Date();
+    const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    item.innerHTML = '<div class="time">' + time + '</div>' + escapeHtml(text);
+    historyEl.appendChild(item);
+    historyEl.scrollTop = historyEl.scrollHeight;
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+  }
+
+  async function sendText() {
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    sendBtn.disabled = true;
+    statusEl.textContent = "";
+
+    try {
+      const resp = await fetch("/api/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!resp.ok) {
+        const data = await resp.json();
+        throw new Error(data.error || "Send failed");
+      }
+
+      addHistory(text);
+      inputEl.value = "";
+      autoResize();
+    } catch (err) {
+      statusEl.textContent = err.message;
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+</script>
+
+</body>
+</html>
