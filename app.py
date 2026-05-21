@@ -47,9 +47,14 @@ def _type_x11(text):
 
 
 def _type_wayland(text):
-    subprocess.run(["wl-copy", "--primary"], input=text, text=True, check=True, timeout=5)
+    # wl-copy sets clipboard, ydotool simulates Ctrl+V
+    # ydotool requires input group membership: sudo usermod -a -G input $USER
+    subprocess.run(["wl-copy"], input=text, text=True, check=True, timeout=5)
     time.sleep(0.05)
-    subprocess.run(["ydotool", "click", "1"], check=True, timeout=5)
+    subprocess.run(
+        ["ydotool", "key", "29:1", "47:1", "47:0", "29:0"],
+        check=True, timeout=5,
+    )
 
 
 @app.route("/")
@@ -75,7 +80,12 @@ def send_text():
     except subprocess.CalledProcessError as e:
         return jsonify({"error": f"Input tool error: {e}"}), 500
     except FileNotFoundError as e:
-        return jsonify({"error": f"Tool not found: {e}"}), 500
+        is_wayland = bool(os.environ.get("WAYLAND_DISPLAY"))
+        if is_wayland:
+            hint = "Wayland requires: sudo apt install wl-clipboard ydotool && sudo usermod -a -G input $USER (re-login needed)"
+        else:
+            hint = "X11 requires: sudo apt install xclip xdotool"
+        return jsonify({"error": f"Tool not found: {e}. {hint}"}), 500
 
 
 if __name__ == "__main__":
