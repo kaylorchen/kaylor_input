@@ -4,7 +4,8 @@ import tempfile
 import time
 from flask import Flask, request, jsonify, send_from_directory
 
-app = Flask(__name__, static_folder="static")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(__name__, static_folder=os.path.join(BASE_DIR, "static"))
 
 
 def _is_wayland():
