@@ -6,9 +6,12 @@ from flask import Flask, request, jsonify, send_from_directory
 app = Flask(__name__, static_folder="static")
 
 
-def type_via_primary_selection(text):
-    """Paste text via X11 PRIMARY selection + middle-click. Works everywhere."""
-    if os.environ.get("WAYLAND_DISPLAY"):
+def _is_wayland():
+    return bool(os.environ.get("WAYLAND_DISPLAY")) or os.environ.get("XDG_SESSION_TYPE") == "wayland"
+
+
+def type_text(text):
+    if _is_wayland():
         _type_wayland(text)
     else:
         _type_x11(text)
@@ -73,18 +76,17 @@ def send_text():
         return jsonify({"error": "Text is empty"}), 400
 
     try:
-        type_via_primary_selection(text)
+        type_text(text)
         return jsonify({"ok": True, "text": text})
     except subprocess.TimeoutExpired:
         return jsonify({"error": "Input timed out"}), 500
     except subprocess.CalledProcessError as e:
         return jsonify({"error": f"Input tool error: {e}"}), 500
     except FileNotFoundError as e:
-        is_wayland = bool(os.environ.get("WAYLAND_DISPLAY"))
-        if is_wayland:
-            hint = "Wayland requires: sudo apt install wl-clipboard ydotool && sudo usermod -a -G input $USER (re-login needed)"
+        if _is_wayland():
+            hint = "Wayland: sudo apt install wl-clipboard ydotool && sudo usermod -a -G input $USER (re-login) && ydotoold &"
         else:
-            hint = "X11 requires: sudo apt install xclip xdotool"
+            hint = "X11: sudo apt install xclip xdotool"
         return jsonify({"error": f"Tool not found: {e}. {hint}"}), 500
 
 
