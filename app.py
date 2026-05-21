@@ -87,4 +87,9 @@ def send_text():
 
 
 if __name__ == "__main__":
+    if _is_wayland():
+        try:
+            subprocess.run(["pgrep", "ydotoold"], check=True, capture_output=True)
+        except subprocess.CalledProcessError:
+            subprocess.Popen(["ydotoold"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     app.run(host="0.0.0.0", port=5000, debug=False)

@@ -27,9 +27,6 @@ sudo apt install xclip xdotool
 sudo apt install wl-clipboard ydotool
 sudo usermod -a -G input $USER
 # 重新登录使 input 组生效
-
-# 每次登录后启动守护进程：
-ydotoold &
 ```
 
 > 服务会自动通过 `WAYLAND_DISPLAY` / `XDG_SESSION_TYPE` 检测环境，无需手动配置。
