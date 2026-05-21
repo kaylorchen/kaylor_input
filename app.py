@@ -8,8 +8,30 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder=os.path.join(BASE_DIR, "static"))
 
 
+TERMINAL_KEYWORDS = ("terminal", "term", "xterm", "konsole", "alacritty",
+                     "kitty", "tilix", "st-", "rxvt", "foot", "Terminal", "Term")
+
+
 def _is_wayland():
     return bool(os.environ.get("WAYLAND_DISPLAY")) or os.environ.get("XDG_SESSION_TYPE") == "wayland"
+
+
+def _is_terminal_x11():
+    """Check if the focused X11 window is a terminal."""
+    try:
+        wid = subprocess.run(
+            ["xdotool", "getactivewindow"],
+            capture_output=True, text=True, timeout=2,
+        )
+        if wid.returncode != 0:
+            return False
+        wmclass = subprocess.run(
+            ["xprop", "-id", wid.stdout.strip(), "WM_CLASS"],
+            capture_output=True, text=True, timeout=2,
+        )
+        return any(kw in wmclass.stdout for kw in TERMINAL_KEYWORDS)
+    except Exception:
+        return False
 
 
 def type_text(text):
@@ -40,8 +62,9 @@ def _type_x11(text):
         os.unlink(tmp_path)
 
     time.sleep(0.05)
+    keys = "ctrl+shift+v" if _is_terminal_x11() else "ctrl+v"
     subprocess.run(
-        ["xdotool", "key", "ctrl+v"],
+        ["xdotool", "key", keys],
         check=True, timeout=5,
         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
