@@ -51,8 +51,9 @@ def _type_x11(text):
 
 def _type_wayland(text):
     subprocess.run(["wl-copy"], input=text, text=True, check=True, timeout=5)
-    time.sleep(0.05)
-    subprocess.run(["ydotool", "click", "2"], check=True, timeout=5)
+    subprocess.run(["wl-copy", "--primary"], input=text, text=True, check=True, timeout=5)
+    time.sleep(0.15)
+    subprocess.run(["ydotool", "click", "3"], check=True, timeout=5)
 
 
 @app.route("/")
