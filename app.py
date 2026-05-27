@@ -17,17 +17,17 @@ def _is_wayland():
 
 
 def _is_terminal_x11():
-    """Check if the focused X11 window is a terminal."""
     try:
+        env = _xclip_env()
         wid = subprocess.run(
             ["xdotool", "getactivewindow"],
-            capture_output=True, text=True, timeout=2,
+            capture_output=True, text=True, timeout=2, env=env,
         )
         if wid.returncode != 0:
             return False
         wmclass = subprocess.run(
             ["xprop", "-id", wid.stdout.strip(), "WM_CLASS"],
-            capture_output=True, text=True, timeout=2,
+            capture_output=True, text=True, timeout=2, env=env,
         )
         return any(kw in wmclass.stdout for kw in TERMINAL_KEYWORDS)
     except Exception:
@@ -42,6 +42,7 @@ def type_text(text):
 
 
 def _type_x11(text):
+    env = _xclip_env()
     with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
         f.write(text)
         tmp_path = f.name
@@ -49,13 +50,13 @@ def _type_x11(text):
         with open(tmp_path) as fh:
             subprocess.run(
                 ["xclip", "-selection", "clipboard"],
-                stdin=fh, check=True, timeout=5,
+                stdin=fh, check=True, timeout=5, env=env,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
         with open(tmp_path) as fh:
             subprocess.run(
                 ["xclip", "-selection", "primary"],
-                stdin=fh, check=True, timeout=5,
+                stdin=fh, check=True, timeout=5, env=env,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
     finally:
@@ -65,7 +66,7 @@ def _type_x11(text):
     keys = "ctrl+shift+v" if _is_terminal_x11() else "ctrl+v"
     subprocess.run(
         ["xdotool", "key", keys],
-        check=True, timeout=5,
+        check=True, timeout=5, env=env,
         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
 
@@ -125,6 +126,26 @@ def send_text():
         else:
             hint = "X11: apt install xclip xdotool"
         return jsonify({"error": f"Tool not found: {e}. {hint}"}), 500
+
+
+def _resolve_display():
+    """Find an active X11 display. Works even if DISPLAY env is not set (linger boot)."""
+    display = os.environ.get("DISPLAY")
+    if display:
+        return display
+    # Try common displays
+    for n in range(5):
+        d = f":{n}"
+        if os.path.exists(f"/tmp/.X11-unix/X{n}"):
+            return d
+    return ":0"
+
+
+def _xclip_env():
+    """Return env dict with DISPLAY set for xclip subprocess calls."""
+    env = os.environ.copy()
+    env["DISPLAY"] = _resolve_display()
+    return env
 
 
 if __name__ == "__main__":
